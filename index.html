@@ -1,0 +1,458 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>worryshredder</title>
+<meta name="description" content="Write down what's worrying you, then shred it, burn it or float it away. A small ritual for letting go.">
+<meta name="color-scheme" content="light">
+<link rel="icon" href="assets/icon.svg" type="image/svg+xml">
+<style>
+@font-face {
+  font-family: "Pixelify Sans";
+  src: url("assets/PixelifySans.ttf") format("truetype");
+  font-weight: 400 700;
+  font-display: swap;
+}
+/* Cozy pixel paper */
+:root {
+  --ink: #3b2f2a;
+  --muted: #7a6a5f;
+  --paper: #fbf5e9;
+  --paper-2: #f4ead6;
+  --line: #e6d7bc;
+  --desk: #eadcc2;
+  --desk-dot: #dfcfb1;
+  --accent: #c8553d;
+  --accent-dark: #9e3f2c;
+  --sage: #6f8f72;
+  --pixel: "Pixelify Sans", "Courier New", monospace;
+  --body: "Trebuchet MS", Verdana, "Segoe UI", system-ui, sans-serif;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body {
+  font: 17px/1.6 var(--body);
+  color: var(--ink);
+  background-color: var(--desk);
+  background-image: radial-gradient(var(--desk-dot) 1px, transparent 1.2px);
+  background-size: 8px 8px;
+  min-height: 100vh;
+}
+button, textarea { font: inherit; color: inherit; }
+:focus-visible { outline: 3px dashed var(--accent); outline-offset: 3px; }
+
+/* Pixel corners: the shape is cut with clip-path, the shadow comes from the wrapper's drop-shadow */
+.px { clip-path: polygon(0 6px, 3px 6px, 3px 3px, 6px 3px, 6px 0, calc(100% - 6px) 0, calc(100% - 6px) 3px, calc(100% - 3px) 3px, calc(100% - 3px) 6px, 100% 6px,
+  100% calc(100% - 6px), calc(100% - 3px) calc(100% - 6px), calc(100% - 3px) calc(100% - 3px), calc(100% - 6px) calc(100% - 3px), calc(100% - 6px) 100%,
+  6px 100%, 6px calc(100% - 3px), 3px calc(100% - 3px), 3px calc(100% - 6px), 0 calc(100% - 6px)); }
+.lift { filter: drop-shadow(4px 4px 0 var(--ink)); }
+
+header { max-width: 680px; margin: 0 auto; padding: 18px 16px 0; display: flex; align-items: center; gap: 12px; }
+header .logo { display: flex; align-items: center; gap: 10px; font: 700 20px var(--pixel); }
+header .logo svg { width: 26px; height: 26px; }
+header .spacer { flex: 1; }
+.link { background: none; border: 0; padding: 4px 8px; cursor: pointer; font-size: 15px; color: var(--ink); text-decoration: underline; text-underline-offset: 3px; }
+.link:hover { color: var(--accent); }
+
+main { max-width: 680px; margin: 0 auto; padding: 22px 16px 28px; }
+.sheet { background: var(--ink); padding: 3px; }
+.sheet > .inner { background: var(--paper); padding: 30px 34px 34px; }
+
+h1 { font: 700 36px/1.1 var(--pixel); margin: 0 0 8px; letter-spacing: .5px; }
+.lede { margin: 0 0 24px; color: var(--muted); }
+
+.writebox { position: relative; }
+.note-wrap { background: var(--ink); padding: 3px; }
+textarea {
+  display: block; width: 100%; min-height: 220px; resize: vertical; border: 0; border-radius: 0;
+  padding: 6px 18px 10px 54px; line-height: 32px; font-size: 18px;
+  background-color: var(--paper-2);
+  background-image: linear-gradient(90deg, transparent 38px, #e7a99b 38px, #e7a99b 40px, transparent 40px),
+    repeating-linear-gradient(to bottom, transparent 0 31px, var(--line) 31px 32px);
+  background-attachment: local;
+}
+textarea::placeholder { color: #a8968a; }
+textarea:focus { outline: none; }
+.note-wrap:focus-within { background: var(--accent); }
+.count { text-align: right; font-size: 13px; color: var(--muted); margin: 6px 2px 0; min-height: 1.4em; }
+#fx { position: absolute; left: 0; pointer-events: none; display: none; }
+.writebox.playing .note-wrap { visibility: hidden; }
+.writebox.playing #fx { display: block; }
+.writebox.playing ~ #controls { visibility: hidden; }
+
+.lab { display: block; font-weight: 700; margin: 18px 0 10px; }
+.rituals { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+.ritual { background: var(--ink); padding: 3px; border: 0; cursor: pointer; }
+.ritual span { display: flex; flex-direction: column; align-items: center; gap: 6px; background: var(--paper); padding: 12px 6px 10px; font-weight: 700; font-size: 15px; }
+.ritual svg { width: 34px; height: 34px; }
+.ritual:hover span { background: var(--paper-2); }
+.ritual[aria-pressed=true] span { background: var(--ink); color: var(--paper); }
+.ritual[aria-pressed=true] svg path { fill: var(--paper); }
+.ritual[aria-pressed=true] svg .hot { fill: #f2a65a; }
+
+.go-row { display: flex; align-items: center; gap: 16px; margin-top: 26px; flex-wrap: wrap; }
+.btn { border: 0; padding: 3px; background: var(--ink); cursor: pointer; }
+.btn span { display: block; background: var(--accent); color: var(--paper); padding: 10px 28px; font: 700 20px var(--pixel); letter-spacing: .5px; }
+.btn:hover span { background: var(--accent-dark); }
+.btn:active { transform: translate(2px, 2px); }
+.btn.quiet span { background: var(--paper); color: var(--ink); font-size: 17px; padding: 8px 22px; }
+.btn.quiet:hover span { background: var(--paper-2); }
+.btn[disabled] { opacity: .45; cursor: not-allowed; }
+.hint { font-size: 14px; color: var(--muted); }
+
+#done[hidden], #controls[hidden], .writebox[hidden] { display: none; }
+#done { text-align: center; padding: 18px 0 6px; animation: rise .5s steps(5) both; }
+@keyframes rise { from { transform: translateY(10px); opacity: 0; } to { transform: none; opacity: 1; } }
+#done .gone { font: 700 30px/1.2 var(--pixel); margin: 6px 0 14px; }
+#done .line { font-size: 20px; line-height: 1.5; max-width: 30em; margin: 0 auto 18px; }
+#done .tally { color: var(--muted); font-size: 15px; margin: 0 0 22px; }
+#done .tally b { font-family: var(--pixel); font-size: 18px; color: var(--ink); }
+.heavy { text-align: left; background: var(--ink); padding: 3px; margin: 0 auto 22px; max-width: 34em; }
+.heavy > div { background: #fff8ef; padding: 14px 18px; font-size: 16px; }
+.heavy p { margin: 0 0 8px; }
+.heavy p:last-child { margin: 0; }
+.heavy a { color: var(--accent-dark); font-weight: 700; }
+.heavy[hidden] { display: none; }
+
+footer { max-width: 680px; margin: 0 auto; padding: 0 16px 44px; font-size: 14px; color: var(--muted); }
+footer p { margin: 0 0 8px; }
+footer a { color: var(--ink); }
+
+dialog { padding: 0; border: 0; background: var(--ink); max-width: 460px; width: calc(100% - 32px); }
+dialog::backdrop { background: rgba(59,47,42,.25); }
+dialog .inner { background: var(--paper); padding: 22px 26px 22px; margin: 3px; }
+dialog h2 { font: 700 22px var(--pixel); margin: 0 0 12px; }
+dialog p { margin: 0 0 12px; font-size: 16px; }
+dialog a { color: var(--ink); }
+dialog .btnrow { text-align: right; margin-top: 16px; }
+
+@media (max-width: 560px) {
+  main { padding-top: 16px; }
+  .sheet > .inner { padding: 22px 18px 26px; }
+  h1 { font-size: 30px; }
+  textarea { padding-left: 46px; background-image: linear-gradient(90deg, transparent 30px, #e7a99b 30px, #e7a99b 32px, transparent 32px), repeating-linear-gradient(to bottom, transparent 0 31px, var(--line) 31px 32px); }
+  .ritual span { font-size: 13px; }
+  .hint { display: none; }
+}
+@media (prefers-reduced-motion: reduce) { #done { animation: none; } }
+</style>
+</head>
+<body>
+<header>
+  <span class="logo">
+    <svg viewBox="0 0 10 10" shape-rendering="crispEdges" aria-hidden="true"><path fill="#3b2f2a" d="M2 1h6v1H2zM1 2h1v3H1zM8 2h1v3H8zM1 5h8v1H1z"/><path fill="#c8553d" d="M2 6h1v3H2zM4 6h1v2H4zM6 6h1v3H6zM8 6h1v2H8z"/></svg>
+    worryshredder
+  </span>
+  <span class="spacer"></span>
+  <button type="button" class="link" id="aboutBtn">About</button>
+</header>
+
+<main>
+  <div class="lift"><div class="sheet px"><div class="inner px">
+    <h1>Shred a worry.</h1>
+    <p class="lede">Write down what's on your mind, as messy as you like. Then let it go.</p>
+
+    <div class="writebox" id="writebox">
+      <div class="note-wrap px">
+        <textarea id="worry" class="px" maxlength="600" aria-label="What's worrying you?" placeholder="What's worrying you?"></textarea>
+      </div>
+      <p class="count" id="count"></p>
+      <canvas id="fx" aria-hidden="true"></canvas>
+    </div>
+
+    <div id="controls">
+      <span class="lab" id="ritualLabel">How do you want to let it go?</span>
+      <div class="rituals" role="group" aria-labelledby="ritualLabel" id="rituals">
+        <button type="button" class="ritual" data-ritual="shred"><span class="px">
+          <svg viewBox="0 0 12 12" shape-rendering="crispEdges" aria-hidden="true"><path fill="#3b2f2a" d="M3 0h6v4H3zM1 4h10v3H1zM2 8h1v4H2zM4 8h1v3H4zM6 8h1v4H6zM8 8h1v3H8zM10 8h1v2h-1z"/></svg>
+          Shred</span></button>
+        <button type="button" class="ritual" data-ritual="burn"><span class="px">
+          <svg viewBox="0 0 12 12" shape-rendering="crispEdges" aria-hidden="true"><path fill="#3b2f2a" d="M5 0h1v2H5zM4 2h3v2H4zM3 4h6v2H3zM2 6h8v4H2zM3 10h6v2H3z"/><path class="hot" fill="#c8553d" d="M5 6h2v1H5zM4 7h4v2H4zM5 9h2v1H5z"/></svg>
+          Burn</span></button>
+        <button type="button" class="ritual" data-ritual="float"><span class="px">
+          <svg viewBox="0 0 12 12" shape-rendering="crispEdges" aria-hidden="true"><path fill="#3b2f2a" d="M4 0h4v1H4zM3 1h6v1H3zM2 2h8v4H2zM3 6h6v1H3zM4 7h4v1H4zM5 8h2v1H5zM6 9h1v1H6zM5 10h1v2H5z"/></svg>
+          Float away</span></button>
+      </div>
+      <div class="go-row">
+        <button type="button" class="btn px" id="go"><span class="px">Let it go</span></button>
+        <span class="hint">or press Ctrl + Enter</span>
+      </div>
+    </div>
+
+    <div id="done" hidden aria-live="polite">
+      <p class="gone" id="gone">Shredded.</p>
+      <div class="heavy px" id="heavy" hidden><div class="px">
+        <p>That sounds really heavy, and it deserves more than a shredder. Please talk to someone today, a friend, family member or a counsellor.</p>
+        <p>In India you can call <a href="tel:14416">Tele-MANAS on 14416</a> (or 1800-891-4416), free and open 24 hours, in many languages. If you are in danger right now, call 112.</p>
+      </div></div>
+      <p class="line" id="line"></p>
+      <p class="tally" id="tally"></p>
+      <button type="button" class="btn px" id="again"><span class="px">Write another</span></button>
+    </div>
+  </div></div></div>
+</main>
+
+<footer>
+  <p>If a worry feels too heavy to carry alone, talk to someone you trust. In India, Tele-MANAS is free and open 24 hours: <a href="tel:14416">14416</a>.</p>
+  <p><a href="https://mridulsaravanan.com/#/projects">More projects</a></p>
+</footer>
+
+<dialog id="about" aria-labelledby="aboutTitle">
+  <div class="inner px">
+    <h2 id="aboutTitle">About worryshredder</h2>
+    <p>Writing a worry down and then physically getting rid of it is an old trick: it gets the worry out of your head and onto something you can throw away.</p>
+    <p>Pick shred, burn or float away. The words aren't kept: the only thing remembered on this device is how many worries you've let go.</p>
+    <p>It's a small ritual, not therapy. If worries are taking over your days, a doctor or counsellor can really help.</p>
+    <p>Font: Pixelify Sans (SIL Open Font License). One of the projects at <a href="https://mridulsaravanan.com/#/projects">mridulsaravanan.com</a>.</p>
+    <div class="btnrow"><button type="button" class="btn quiet px" id="aboutOk"><span class="px">OK</span></button></div>
+  </div>
+</dialog>
+
+<script src="engine.js"></script>
+<script>
+(function () {
+  'use strict';
+  var WS = window.WorryShredder;
+  var $ = function (id) { return document.getElementById(id); };
+  var worry = $('worry'), fx = $('fx'), box = $('writebox');
+  var ritual = 'shred', playing = false, lastLine = '';
+  var reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  // Only the number of worries let go is kept, never the words.
+  var KEY = 'worryshredder.count';
+  function getCount() { try { return parseInt(localStorage.getItem(KEY), 10) || 0; } catch (e) { return 0; } }
+  function setCount(n) { try { localStorage.setItem(KEY, String(n)); } catch (e) { /* ignore */ } }
+
+  function pickRitual(r) {
+    ritual = r;
+    Array.prototype.forEach.call(document.querySelectorAll('.ritual'), function (b) {
+      b.setAttribute('aria-pressed', b.getAttribute('data-ritual') === r ? 'true' : 'false');
+    });
+  }
+  $('rituals').addEventListener('click', function (e) { var b = e.target.closest('.ritual'); if (b) pickRitual(b.getAttribute('data-ritual')); });
+
+  function updateCount() {
+    var n = worry.value.length;
+    $('count').textContent = n > 450 ? (600 - n) + ' characters left' : '';
+  }
+  worry.addEventListener('input', updateCount);
+  worry.addEventListener('keydown', function (e) { if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') { e.preventDefault(); go(); } });
+  $('go').addEventListener('click', go);
+  $('again').addEventListener('click', reset);
+  $('aboutBtn').addEventListener('click', function () { $('about').showModal(); });
+  $('aboutOk').addEventListener('click', function () { $('about').close(); });
+
+  /* ---------- Drawing the note ---------- */
+  var COLORS = { paper: '#f4ead6', line: '#e6d7bc', margin: '#e7a99b', ink: '#3b2f2a', edge: '#3b2f2a' };
+
+  // The note as an offscreen canvas, the same size as the textarea on screen.
+  function paintNote(w, h, dpr, text) {
+    var c = document.createElement('canvas');
+    c.width = Math.round(w * dpr); c.height = Math.round(h * dpr);
+    var g = c.getContext('2d');
+    g.scale(dpr, dpr);
+    g.fillStyle = COLORS.edge; g.fillRect(0, 0, w, h);
+    g.fillStyle = COLORS.paper; g.fillRect(3, 3, w - 6, h - 6);
+    g.fillStyle = COLORS.line;
+    for (var y = 3 + 37; y < h - 3; y += 32) g.fillRect(3, y, w - 6, 1);
+    var mx = w < 420 ? 33 : 41;
+    g.fillStyle = COLORS.margin; g.fillRect(mx, 3, 2, h - 6);
+    g.fillStyle = COLORS.ink;
+    g.font = '18px "Trebuchet MS", Verdana, sans-serif';
+    g.textBaseline = 'alphabetic';
+    var left = mx + 13;
+    var lines = WS.wrap(text, function (s) { return g.measureText(s).width; }, w - left - 18, Math.floor((h - 16) / 32));
+    lines.forEach(function (ln, i) { g.fillText(ln, left, 3 + 31 + i * 32); });
+    return c;
+  }
+
+  function easeIn(t) { return t * t; }
+  function easeInOut(t) { return t < .5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2; }
+
+  function go() {
+    if (playing) return;
+    var text = worry.value.trim();
+    if (!text) { worry.focus(); worry.setAttribute('placeholder', 'Write it down first, even one word is enough.'); return; }
+    playing = true;
+    $('go').disabled = true;
+    var heavy = WS.isHeavy(text);
+
+    var wrap = box.querySelector('.note-wrap');
+    var w = wrap.offsetWidth, h = wrap.offsetHeight;
+    var above = 150, below = 190;
+    var dpr = Math.min(window.devicePixelRatio || 1, 2);
+    fx.style.top = -above + 'px';
+    fx.style.width = w + 'px'; fx.style.height = (h + above + below) + 'px';
+    fx.width = Math.round(w * dpr); fx.height = Math.round((h + above + below) * dpr);
+    var ctx = fx.getContext('2d');
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    var note = paintNote(w, h, dpr, worry.value);
+    box.classList.add('playing');
+
+    var scene = reduce ? fade : ritual === 'burn' ? burn : ritual === 'float' ? floatAway : shred;
+    var dur = reduce ? 700 : ritual === 'float' ? 3200 : 2800;
+    var state = scene.init ? scene.init(w, h) : {};
+    var start = null;
+    function frame(now) {
+      if (start === null) start = now;
+      var t = Math.min(1, (now - start) / dur);
+      ctx.clearRect(0, 0, w, h + above + below);
+      scene(ctx, note, w, h, above, below, t, state);
+      if (t < 1) requestAnimationFrame(frame);
+      else finish(heavy);
+    }
+    requestAnimationFrame(frame);
+  }
+
+  function finish(heavy) {
+    box.classList.remove('playing');
+    box.hidden = true;
+    $('controls').hidden = true;
+    worry.value = '';
+    updateCount();
+    var n = getCount() + 1;
+    setCount(n);
+    // A heavy worry gets a gentle, plain reply, not a playful one.
+    $('gone').textContent = heavy ? 'Set down for now.' : WS.RITUALS[ritual].done;
+    $('heavy').hidden = !heavy;
+    lastLine = heavy ? "You don't have to carry this alone." : WS.pickLine(n, lastLine);
+    $('line').textContent = lastLine;
+    $('tally').innerHTML = 'Worries let go: <b>' + n + '</b>';
+    $('done').hidden = false;
+    playing = false;
+    $('go').disabled = false;
+    $('again').focus();
+  }
+
+  function reset() {
+    $('done').hidden = true;
+    box.hidden = false;
+    $('controls').hidden = false;
+    worry.setAttribute('placeholder', "What's worrying you?");
+    worry.focus();
+  }
+
+  /* ---------- The three rituals ---------- */
+
+  function fade(ctx, note, w, h, above, below, t) {
+    ctx.globalAlpha = 1 - t;
+    ctx.drawImage(note, 0, above, w, h);
+    ctx.globalAlpha = 1;
+  }
+
+  // Shred: the note slides into a shredder and comes out the bottom as falling strips.
+  function shred(ctx, note, w, h, above, below, t, st) {
+    var slotY = above + h * 0.42;
+    var travel = slotY - above + h + 40;
+    var top = above + easeIn(Math.min(1, t * 1.15)) * travel;
+    var scaleX = note.width / w, scaleY = note.height / h;
+    // Part still above the slot: the whole sheet
+    var visTop = Math.max(0, Math.min(h, slotY - top));
+    if (visTop > 0) ctx.drawImage(note, 0, 0, note.width, visTop * scaleY, 0, top, w, visTop);
+    // Part through the slot: strips that drift apart and fall faster the further they go
+    var n = Math.max(10, Math.round(w / 26)), sw = w / n;
+    for (var i = 0; i < n; i++) {
+      var k = st.k[i % st.k.length];
+      for (var sy = visTop; sy < h; sy += 8) {
+        var dy = top + sy;
+        var past = dy - slotY;
+        if (past < 0) continue;
+        var drop = past + Math.pow(past / 60, 2) * 14 * k;
+        var dx = i * sw + Math.sin(i * 1.9 + past / 26) * Math.min(7, past / 14) * k;
+        var y = slotY + drop;
+        if (y > above + h + below) continue;
+        ctx.globalAlpha = Math.max(0, 1 - past / (below + 60));
+        ctx.drawImage(note, i * sw * scaleX, sy * scaleY, (sw - 2) * scaleX, 8 * scaleY, dx + 1, y, sw - 2, 8.5);
+      }
+    }
+    ctx.globalAlpha = 1;
+    // The shredder on top
+    var bw = w + 24;
+    ctx.fillStyle = '#3b2f2a'; ctx.fillRect(-12, slotY - 18, bw, 26);
+    ctx.fillStyle = '#5a4a42'; ctx.fillRect(-12, slotY - 18, bw, 6);
+    ctx.fillStyle = '#c8553d'; ctx.fillRect(w - 46, slotY - 11, 10, 8);
+    ctx.fillStyle = '#3b2f2a';
+    for (var x = 6; x < w; x += 14) ctx.fillRect(x, slotY + 8, 6, 4);
+  }
+  shred.init = function () {
+    var k = [];
+    for (var i = 0; i < 24; i++) k.push(0.6 + ((i * 37) % 11) / 11);
+    return { k: k };
+  };
+
+  // Burn: the note catches from the bottom; cells glow, char and vanish, sparks rise.
+  function burn(ctx, note, w, h, above, below, t, st) {
+    var cell = 6;
+    ctx.drawImage(note, 0, above, w, h);
+    var cols = Math.ceil(w / cell), rows = Math.ceil(h / cell);
+    for (var r = 0; r < rows; r++) {
+      for (var c = 0; c < cols; c++) {
+        var b = st.burnAt[r * cols + c];
+        var p = (t * 1.25 - b) / 0.1;
+        if (p <= 0) continue;
+        var x = c * cell, y = above + r * cell;
+        if (p >= 1) { ctx.clearRect(x, y, cell, cell); continue; }
+        ctx.fillStyle = p < .35 ? '#f6c35b' : p < .7 ? '#e0612f' : '#3b2f2a';
+        ctx.fillRect(x, y, cell, cell);
+      }
+    }
+    // Sparks
+    st.sparks.forEach(function (s) {
+      var life = (t * 1.25 - s.at) / 0.35;
+      if (life <= 0 || life >= 1) return;
+      ctx.globalAlpha = 1 - life;
+      ctx.fillStyle = life < .5 ? '#f6c35b' : '#e0612f';
+      ctx.fillRect(s.x + Math.sin(life * 6 + s.x) * 6, above + s.y - life * 160, 4, 4);
+    });
+    ctx.globalAlpha = 1;
+  }
+  burn.init = function (w, h) {
+    var cell = 6, cols = Math.ceil(w / cell), rows = Math.ceil(h / cell), burnAt = [], sparks = [];
+    var seed = 7;
+    function rnd() { seed = (seed * 9301 + 49297) % 233280; return seed / 233280; }
+    for (var r = 0; r < rows; r++) for (var c = 0; c < cols; c++) {
+      var fromBottom = 1 - r / rows;
+      var wave = Math.sin(c / 5) * 0.04 + Math.sin(c / 2.3) * 0.02;
+      burnAt.push(0.05 + fromBottom * 0.85 + wave + rnd() * 0.1);
+    }
+    for (var i = 0; i < 60; i++) sparks.push({ x: rnd() * w, y: h - rnd() * h, at: 0.05 + rnd() * 0.9 });
+    sparks.forEach(function (s) { s.at = Math.max(s.at, 0.05 + (1 - s.y / h) * 0.85); });
+    return { burnAt: burnAt, sparks: sparks };
+  };
+
+  // Float: the note folds small, a balloon picks it up, and it drifts off the top.
+  var BALLOON = ['..XXXX..', '.XXXXXX.', 'XXXXXXXX', 'XXXXXXXX', 'XXXXXXXX', '.XXXXXX.', '..XXXX..', '...XX...'];
+  function floatAway(ctx, note, w, h, above, below, t) {
+    var cx = w / 2;
+    var fold = Math.min(1, t / 0.3);
+    var s = 1 - easeInOut(fold) * 0.82;
+    var nw = w * s, nh = h * s;
+    var rise = t > 0.38 ? easeIn((t - 0.38) / 0.62) * (above + h + 120) : 0;
+    var sway = t > 0.38 ? Math.sin((t - 0.38) * 10) * 14 * Math.min(1, (t - 0.38) * 4) : 0;
+    var ny = above + (h - nh) / 2 - rise;
+    var nx = cx - nw / 2 + sway;
+    ctx.drawImage(note, nx, ny, nw, nh);
+    if (t > 0.25) {
+      var a = Math.min(1, (t - 0.25) / 0.12);
+      var px = 9, bw = 8 * px, bh = 8 * px;
+      var bx = cx - bw / 2 + sway * 1.3, by = ny - 70 - bh - (1 - a) * 30;
+      ctx.globalAlpha = a;
+      ctx.fillStyle = '#3b2f2a';
+      ctx.fillRect(Math.round(cx + sway * 1.15), by + bh, 2, ny - (by + bh));
+      BALLOON.forEach(function (row, r) {
+        for (var c = 0; c < row.length; c++) if (row[c] === 'X') {
+          ctx.fillStyle = (r === 1 && c === 2) || (r === 2 && c === 1) ? '#f2b8a8' : '#c8553d';
+          ctx.fillRect(bx + c * px, by + r * px, px, px);
+        }
+      });
+      ctx.globalAlpha = 1;
+    }
+  }
+
+  pickRitual('shred');
+  updateCount();
+})();
+</script>
+</body>
+</html>
